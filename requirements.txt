@@ -7,4 +7,4 @@ scikit-learn
 joblib
 sentence-transformers
 torch
-
+gunicorn
