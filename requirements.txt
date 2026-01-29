@@ -1,6 +1,10 @@
+fastapi
+uvicorn
 streamlit
+requests
 numpy
-joblib
 scikit-learn
+joblib
 sentence-transformers
 torch
+
