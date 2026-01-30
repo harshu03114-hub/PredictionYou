@@ -5,40 +5,44 @@ import joblib
 
 app = FastAPI(title="Predicted You vs Real You API")
 
-# =====================================================
-# Load models (load the embedder directly without saving it)
-# =====================================================
-embedder = SentenceTransformer("all-MiniLM-L6-v2")  # Load Sentence-BERT model
-
-models = {
-    "Extraversion": joblib.load("E_label_classifier.pkl"),
-    "Openness": joblib.load("J_label_classifier.pkl"),
-    "Conscientiousness": joblib.load("N_label_classifier.pkl"),
-    "Agreeableness": joblib.load("T_label_classifier.pkl"),
-}
+embedder = None
+models = {}
 
 # =====================================================
-# Schema (define the expected input)
+# Load models ON STARTUP (not at import time)
+# =====================================================
+@app.on_event("startup")
+def load_models():
+    global embedder, models
+
+    embedder = SentenceTransformer("all-MiniLM-L6-v2")
+
+    models = {
+        "Extraversion": joblib.load("E_label_classifier.pkl"),
+        "Openness": joblib.load("J_label_classifier.pkl"),
+        "Conscientiousness": joblib.load("N_label_classifier.pkl"),
+        "Agreeableness": joblib.load("T_label_classifier.pkl"),
+    }
+
+# =====================================================
+# Schema
 # =====================================================
 class TextInput(BaseModel):
-    text: str  # Input text field
+    text: str
 
 # =====================================================
-# Inference (use the loaded embedder and classifiers)
+# Inference
 # =====================================================
 def predict_personality(text: str):
-    # Convert text to embedding using the embedder
     embedding = embedder.encode([text])
 
     prediction = {}
     confidence = {}
 
-    # For each trait, run inference using the respective model
     for trait, model in models.items():
         pred = model.predict(embedding)[0]
         prob = model.predict_proba(embedding)[0][pred]
 
-        # Store predictions and confidence scores
         prediction[trait] = "High" if pred == 1 else "Low"
         confidence[trait] = round(float(prob), 3)
 
@@ -47,7 +51,6 @@ def predict_personality(text: str):
         "confidence": confidence
     }
 
-# API endpoint for predictions
 @app.post("/predict")
 def predict(input: TextInput):
     return predict_personality(input.text)
